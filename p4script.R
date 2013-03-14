@@ -8,8 +8,6 @@
 # You will read in several datasets, perform any necessary manipulation on the data to strip out unnecessary data and or labels, perform MDS upon the data, and plot the results.
 
 # Project Instructions
-
-# Iris ----
 # 2. Perform LDA on the iris data (in the script). Let's create a random sample from the set of 150 instances of size 125 on which to train. If you don't remember how to do this take a look at the slides.
 
 ## This is how you would do LDA if there wasn't a nice lda() function (arrgh!)
@@ -29,40 +27,31 @@
 #  # Run PCA on new dataset
 # pca.results = prcomp(iris.copy[-5])
 
-do.lda = function (data, s.class.name='') {
+do.lda = function (data, classes, training.count) {
     library(MASS)
-    classes = data[[s.class.name]]
     data.cnt = nrow(data)
-    lda.input = data[-5]
+    lda.input = data[-length(data)]  # exluded class, assumed to be in last col
 
-    train.ixs = sample(1:data.cnt, 125)
-    lda.results = lda(lda.input[train.ixs,], classes[train.ixs])
-        # Error in lda.default(x, grouping, ...) :
-        #     variables 1 2 3 4 5 appear to be constant within groups
+    train.ixs = sample(1:data.cnt, training.count)
+    lda.results = lda(lda.input[train.ixs,], classes[train.ixs], tol=0)
 
     # 3. Test the accuracy of your classifier on remaining (test) data. Remember the trick with the minus sign to generate the test set (again, see the slides).
     actual.classes = classes[-train.ixs]
-    predicted.classes = predict(lda.results, lda.input[-train.ixs, ])$class
-
-    # When you acquire the predictions you can compare them to the actual with something like "which(predictions != actual)". This will give you a vector of missed predictions. You can then determine the length of this vector to get a count of those missed. Have the script print the accuracy to the screen. Paste or enter this value along with the appropriate heading into the submission document (mine achieved 98.7% accuracy; yours may vary due to random sampling).
-    inaccuracy = length(which(actual.classes != predicted.classes)) / length(actual.classes)
-    print(sprintf('Accuracy was %.0f%%', 100*(1-inaccuracy)))
+    if (length(actual.classes) > 1) {
+        predicted.classes = predict(lda.results, lda.input[-train.ixs, ])$class
+    
+        # When you acquire the predictions you can compare them to the actual with something like "which(predictions != actual)". This will give you a vector of missed predictions. You can then determine the length of this vector to get a count of those missed. Have the script print the accuracy to the screen. Paste or enter this value along with the appropriate heading into the submission document (mine achieved 98.7% accuracy; yours may vary due to random sampling).
+        inaccuracy = length(which(actual.classes != predicted.classes)) / length(actual.classes)
+        print(sprintf('Accuracy was %.0f%%', 100*(1-inaccuracy)))
+    } else {
+        print("Used all data to train, so accuracy is irrelevant.")
+    }
 
     # Remember, the lda function does not project the data for you. You must do this yourself (using the %*% operator; see the slides if you don't remember).
     projectionOntoFirst = as.matrix(lda.input) %*% lda.results$scaling[,1]
     projectionOntoSec = as.matrix(lda.input) %*% lda.results$scaling[,2]
     return(list(projectionOntoFirst, projectionOntoSec))
 }
-
-# 4. Next you are to create a scatter plot of the data in reduced dimensional space (two dimensions represented by the first two Linear Discriminants). Actually, you will create three scatter plots: one for LDA, one for MDS, and one for PCA. They will be placed in a three panel figure and will be colorized by species. Make the plot a 6.6X2.2 window and tighten up the margins like we did in the previous project. The points should be filled-in (solid) points and the plot should have an appropriate title and X and Y labels. Also, don't forget to include a legend.  To get a three panel plot you will use the layout command.
-windows(6.6,2.2)
-layout(matrix(1:3, 1, 3), widths=c(1, 1, 1)  );
-layout.show(3)
-
-# The layout.show command shows the three panel plot (see below). If you were to perform the plot command three times, each would go in an associated panel. Try running matrix(1:3, 1, 3) at the command line. This should give you an idea of how it is used in the layout command. Put these commands in the script.
-# > matrix(1:3, 1, 3)
-# [,1] [,2] [,3]
-# [1,]    1    2    3
 
 do.plot = function(plot.data, classes, s.label='(A)') {
 #     plot.data = lda.plot.data
@@ -85,14 +74,11 @@ do.plot = function(plot.data, classes, s.label='(A)') {
          cex = 1, col = label.colors, # main = title,
          xlab = "",
          ylab = "")
-#     legend('bottomright', legend=unique.classes, col=colors, pch=16, cex=0.8, bg='transparent')
+    legend('bottomright', legend=unique.classes, col=colors, pch=16, cex=0.8, bg='transparent')
 
     # 5. There will be no title for these plots. Instead there will be an (A), (B), and (C) and they will be inside the bounds of the plots.  Since there will be no titles, make sure you make the upper margin zero. We will also not be putting a legend in each (not enough room). Mine looks like the following. I did this with the mtext command. I placed the following command right after the first plot:
     mtext(s.label, line = -2)
 }
-
-lda.plot.data = do.lda(iris, 'Species')
-do.plot(lda.plot.data, iris$Species, '(A)')
 
 # 6. Place code in the script to display the LDA, MDS, and PCA plots. Feel free to copy portions of your scripts from previous projects. In journal and conference papers, figures should stand alone. That is, someone should be able to look at a figure and its caption (figures tend to have captions below while tables above) and tell enough about it to interpret the underlying purpose and meaning of the figure. Copy and paste the three panel figure into your document and create a caption that has a short, descriptive title (like "Iris Data" or "Iris Scatter Plots") followed by descriptions for the three panels and the colors. Note: grad students will be expected to use this kind of format in their reports.
 do.mds = function (data) {
@@ -102,32 +88,67 @@ do.mds = function (data) {
     return(list(mds$points[,1], mds$points[,2]))
 }
 
-mds.plot.data = do.mds(iris)
-do.plot(mds.plot.data, iris$Species, '(B)')
-
 do.pca = function (data){
     pcaResults = prcomp(data)
     pcaXs = pcaResults$x[,1]
     pcaYs = pcaResults$x[,2]
     return(list(pcaXs, pcaYs))
 }
-do.plot(do.pca(iris[-5]), iris$Species, '(C)')
 
+do.all.and.plot = function(data, classes, name, training.count) {
+    # 4. Next you are to create a scatter plot of the data in reduced dimensional space (two dimensions represented by the first two Linear Discriminants). Actually, you will create three scatter plots: one for LDA, one for MDS, and one for PCA. They will be placed in a three panel figure and will be colorized by species. Make the plot a 6.6X2.2 window and tighten up the margins like we did in the previous project. The points should be filled-in (solid) points and the plot should have an appropriate title and X and Y labels. Also, don't forget to include a legend.  To get a three panel plot you will use the layout command.
+    windows(6.6,2.2)
+    layout(matrix(1:3, 1, 3), widths=c(1, 1, 1)  );
+    layout.show(3)
+    # The layout.show command shows the three panel plot (see below). If you were to perform the plot command three times, each would go in an associated panel. Try running matrix(1:3, 1, 3) at the command line. This should give you an idea of how it is used in the layout command. Put these commands in the script.
+    # > matrix(1:3, 1, 3)
+    # [,1] [,2] [,3]
+    # [1,]    1    2    3
+    
+    print(name)
+    do.plot(do.lda(data, classes, training.count), classes, '(A)')
+    do.plot(do.mds(data), classes, '(B)')
+    do.plot(do.pca(data[-length(data)]), classes, '(C)')
+    savePlot(filename=name, type='png')
+}
 
-savePlot(filename='p4', type='png')
+# Iris ----
+do.all.and.plot(iris, iris$Species, 'iris', 125)
 
 # 7. Which if any shows the best separation? Place this question and its answer in the submission document. Don't forget to put the appropriate header, title, and section heading information in the document for the plots and the answers.
-## ANSWER: TODO
+## ANSWER: MDS and PCA produce essentially the same results, just mirrored; LDA, on the other hand, produces a different plot of points. I think LDA presents the best separation by class because there is less overlap between versicolor and virginica, while setosa is still off in its own cluster.
 
 
-# Fruit, Mouse, Tumor ----
 # 1. Perform the same operations for the fruit, mouse, and tumor data (you should have a section for each with a three panel figure in each complete with heading and caption).
 
+# Fruit -------------------------------------------------------------------
+fruits = read.csv(file='fruits.csv')
+do.all.and.plot(fruits, fruits$Class, 'fruit', nrow(fruits)-10)
+
+# Mouse -------------------------------------------------------------------
 # 2. Note: for the mouse data classify by proximal and distal (not by mouse type). Colorize that way as well. There are only 20 data points and close to a hundred dimensions. For this reason, let's use the entire data set as both the training data and testing data.
 
 # 3. The data is quite sparse (lots of zeros) and 38 of the dimensions appear to be constant within groups (this is an error you get when you try to run LDA). The help screen indicates that the "function tries hard to detect if the within-class covariance matrix is singular." It checks whether any variable has within-group variance less than tol^2 and if so it will stop and report the variable as constant. Just for the heck of it, let's force it to run anyway (set tol=0 in the lda command). You'll get a warning but it should run (it did for me, though removing certain data points caused singular matrices and failure to compute).
 
 # 4. You should get a fairly strange looking plot (mine was two vertical columns of points with the distribution along LD2 very small. This led to 100% accuracy for my classifier (not trustworthy because the test data was also the training data).
+mice = read.table(file='otu_table_L6.txt', header=TRUE, sep='\t', strip.white=TRUE, row.names=1)  # hide taxon as first column
+# mice = as.data.frame(mice)
+miceWithRowsAsExperiments = as.data.frame(t(mice))
+experimentNames = colnames(mice)  #colnames(mice)[-1] would skip the first item
+classes = sapply(experimentNames, function(x) { 
+    if( grepl("[A-Z]+P[0-9]", x) ) { 
+        return('proximal') 
+    } else if(grepl("[A-Z]+D[0-9]", x)) { 
+        return('distal')
+    } else { 
+        return('Taxon') 
+    }}
+)
+miceWithRowsAsExperiments$class = classes
+data = miceWithRowsAsExperiments  #[-1,]
+# levels(data$class) = c('proximal', 'distal')  # How to do this programmatically?
+
+do.all.and.plot(data, data$class, 'Mice', nrow(data))
 
 # 5. When performing LDA on the tumor data, I could not get the function to provide two linear discriminants (possibly it causes the accuracy to go down). So I plotted the distribution values on the first linear discriminant. This is what I want you to do as well. Also, LDA did not seem to like the "?'s" in the data.
 
