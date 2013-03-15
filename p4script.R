@@ -57,6 +57,12 @@ do.plot = function(plot.data, classes, s.label='(A)') {
 #     plot.data = lda.plot.data
 #     classes = iris$Species
 #     s.label = '(A)'
+    axis.label = 'Linear Discriminant'
+    if (s.label == '(B)') {
+        axis.label = 'Principal Coordinate'
+    } else if (s.label == '(C)') {
+        axis.label = 'Principal Component'
+    }
     unique.classes = unique(classes)
     data.cnt = nrow(data)
     classes.count = length(unique.classes)
@@ -72,9 +78,11 @@ do.plot = function(plot.data, classes, s.label='(A)') {
     par(mar=c(2.5, 2.5, margin.top, margin.right), mgp=c(1.5, 0.5, 0))
     plot(plot.data[[1]], plot.data[[2]], pch = 16,
          cex = 1, col = label.colors, # main = title,
-         xlab = "",
-         ylab = "")
-    legend('bottomright', legend=unique.classes, col=colors, pch=16, cex=0.8, bg='transparent')
+         xlab = paste(axis.label, '1'),
+         ylab = paste(axis.label, '2'))
+    if (s.label == '(A)') {  # KLUDGE to only put legend in once
+        legend('bottomright', legend=unique.classes, col=colors, pch=16, cex=0.8, bg='transparent')
+    }
 
     # 5. There will be no title for these plots. Instead there will be an (A), (B), and (C) and they will be inside the bounds of the plots.  Since there will be no titles, make sure you make the upper margin zero. We will also not be putting a legend in each (not enough room). Mine looks like the following. I did this with the mtext command. I placed the following command right after the first plot:
     mtext(s.label, line = -2)
@@ -127,14 +135,11 @@ do.all.and.plot(fruits, fruits$Class, 'fruit', nrow(fruits)-10)
 
 # Mouse -------------------------------------------------------------------
 # 2. Note: for the mouse data classify by proximal and distal (not by mouse type). Colorize that way as well. There are only 20 data points and close to a hundred dimensions. For this reason, let's use the entire data set as both the training data and testing data.
-
 # 3. The data is quite sparse (lots of zeros) and 38 of the dimensions appear to be constant within groups (this is an error you get when you try to run LDA). The help screen indicates that the "function tries hard to detect if the within-class covariance matrix is singular." It checks whether any variable has within-group variance less than tol^2 and if so it will stop and report the variable as constant. Just for the heck of it, let's force it to run anyway (set tol=0 in the lda command). You'll get a warning but it should run (it did for me, though removing certain data points caused singular matrices and failure to compute).
-
 # 4. You should get a fairly strange looking plot (mine was two vertical columns of points with the distribution along LD2 very small. This led to 100% accuracy for my classifier (not trustworthy because the test data was also the training data).
 mice = read.table(file='otu_table_L6.txt', header=TRUE, sep='\t', strip.white=TRUE, row.names=1)  # hide taxon as first column
-# mice = as.data.frame(mice)
 miceWithRowsAsExperiments = as.data.frame(t(mice))
-experimentNames = colnames(mice)  #colnames(mice)[-1] would skip the first item
+experimentNames = colnames(mice)
 classes = sapply(experimentNames, function(x) {
     if( grepl("[A-Z]+P[0-9]", x) ) {
         return('proximal')
@@ -145,25 +150,23 @@ classes = sapply(experimentNames, function(x) {
     }}
 )
 miceWithRowsAsExperiments$class = classes
-data = miceWithRowsAsExperiments  #[-1,]
-# levels(data$class) = c('proximal', 'distal')  # How to do this programmatically?
-
+data = miceWithRowsAsExperiments
 do.all.and.plot(data, data$class, 'Mice', nrow(data))
 
 
 # Tumor -------------------------------------------------------------------
 # 5. When performing LDA on the tumor data, I could not get the function to provide two linear discriminants (possibly it causes the accuracy to go down). So I plotted the distribution values on the first linear discriminant. This is what I want you to do as well. Also, LDA did not seem to like the "?'s" in the data.
 # 6. I was able to read in the data with na.strings = "?" and that put NA's in place of "?'s". Then I was able to find the mean of all non-NAs and replace the NAs with the mean by doing the following:
-
-# nonNAs = which(!is.na(mydata[,i]))
-# mydata[-nonNAs,i]=mean(mydata[nonNAs,i])
-
+    # nonNAs = which(!is.na(mydata[,i]))
+    # mydata[-nonNAs,i]=mean(mydata[nonNAs,i])
 # Where "i" is the column in question. We'll talk about other ways to handle NA's in the next lesson.
+
 cancer = read.csv('breast-cancer-wisconsin.data', header=FALSE, na.strings = "?")
 for (i in 1:length(cancer)) {
     nonNAs = which(!is.na(cancer[,i]))
     cancer[-nonNAs,i]=mean(cancer[nonNAs,i])
 }
+
 # Give names to data. The head() function lets you do python-style negative indexing, so the following grabs all but the last column name.
 names(cancer) = c(head(names(cancer), -1), 'class')
 
@@ -176,22 +179,16 @@ cancer[,cCancer][ benignIxs ] = 'Benign'
 cancer[,cCancer][ -benignIxs ] = 'Malignant'
 
 # 7. To generate the density plots I used a kernel density function. It approximates a PDF in that the area under the curve sums to zero. The function (density) defaults to fitting 512 kernels (and it defaults to Gaussian) to the data. First I projected all the data onto LD1 and then found the density plot for everything. This was useful for getting the entire range of x values (both distributions must fit on the X axis so this will come in handy).
-
-# myDens = density(projectionOntoFirst)
-# myXrange = range(myDens$x)
-
+    # myDens = density(projectionOntoFirst)
+    # myXrange = range(myDens$x)
 # 8. Next, I projected just the benigns and plotted them (colored as  blue).
-
-# plot(myDensBenign$x, myDensBenign$y,type = "l", col = "blue",
-# xlim = myXrange, xlab = "Linear Discriminant 1",ylab = "Density")
-
+    # plot(myDensBenign$x, myDensBenign$y,type = "l", col = "blue",
+    # xlim = myXrange, xlab = "Linear Discriminant 1",ylab = "Density")
 # Note the $x and $y, also the xlim, and the type = "l" (that's a lower case L for line)
-
 # 9. Next, I used the "lines" command (instead of plot) to add the malignants to the plot. It has the same format (except you don't need the type).
+## NOTE: The scatter plot for tumor data worked fine for me, so I didn't do the distribution plot.
 do.all.and.plot(cancer, cancer$class, 'Tumor', nrow(cancer)-10)
 
-
-# 10. Don't forget to include an answer to the question about which provides the best separation. Also don't forget to include the accuracy for each dataset. It may be difficult for the tumor data since they it isn't a scatter plot.
 # > source('~/My Dropbox/UM Grad School/2013 Spring/Pattern Rec 548/R workspace/P4 LDA/p4script.R')
 # [1] "iris"
 # [1] "Accuracy was 100%"
@@ -207,7 +204,3 @@ do.all.and.plot(cancer, cancer$class, 'Tumor', nrow(cancer)-10)
 # 3: In lda.default(x, grouping, ...) : variables are collinear
 # 4: In dist(data) : NAs introduced by coercion
 # 5: In dist(data) : NAs introduced by coercion
-
-# 11. Finish-up the write-up with your opinion as to why the best separation is found in the plots you identified. Also include some speculation as to whether the mouse data LDA plot indicates there is hope for a classifier to be able to identify proximal vs. distal, even across different mice.
-
-
