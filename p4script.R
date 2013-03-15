@@ -39,7 +39,7 @@ do.lda = function (data, classes, training.count) {
     actual.classes = classes[-train.ixs]
     if (length(actual.classes) > 1) {
         predicted.classes = predict(lda.results, lda.input[-train.ixs, ])$class
-    
+
         # When you acquire the predictions you can compare them to the actual with something like "which(predictions != actual)". This will give you a vector of missed predictions. You can then determine the length of this vector to get a count of those missed. Have the script print the accuracy to the screen. Paste or enter this value along with the appropriate heading into the submission document (mine achieved 98.7% accuracy; yours may vary due to random sampling).
         inaccuracy = length(which(actual.classes != predicted.classes)) / length(actual.classes)
         print(sprintf('Accuracy was %.0f%%', 100*(1-inaccuracy)))
@@ -104,7 +104,7 @@ do.all.and.plot = function(data, classes, name, training.count) {
     # > matrix(1:3, 1, 3)
     # [,1] [,2] [,3]
     # [1,]    1    2    3
-    
+
     print(name)
     do.plot(do.lda(data, classes, training.count), classes, '(A)')
     do.plot(do.mds(data), classes, '(B)')
@@ -135,13 +135,13 @@ mice = read.table(file='otu_table_L6.txt', header=TRUE, sep='\t', strip.white=TR
 # mice = as.data.frame(mice)
 miceWithRowsAsExperiments = as.data.frame(t(mice))
 experimentNames = colnames(mice)  #colnames(mice)[-1] would skip the first item
-classes = sapply(experimentNames, function(x) { 
-    if( grepl("[A-Z]+P[0-9]", x) ) { 
-        return('proximal') 
-    } else if(grepl("[A-Z]+D[0-9]", x)) { 
+classes = sapply(experimentNames, function(x) {
+    if( grepl("[A-Z]+P[0-9]", x) ) {
+        return('proximal')
+    } else if(grepl("[A-Z]+D[0-9]", x)) {
         return('distal')
-    } else { 
-        return('Taxon') 
+    } else {
+        return('Taxon')
     }}
 )
 miceWithRowsAsExperiments$class = classes
@@ -150,15 +150,30 @@ data = miceWithRowsAsExperiments  #[-1,]
 
 do.all.and.plot(data, data$class, 'Mice', nrow(data))
 
+
+# Tumor -------------------------------------------------------------------
 # 5. When performing LDA on the tumor data, I could not get the function to provide two linear discriminants (possibly it causes the accuracy to go down). So I plotted the distribution values on the first linear discriminant. This is what I want you to do as well. Also, LDA did not seem to like the "?'s" in the data.
-
-
 # 6. I was able to read in the data with na.strings = "?" and that put NA's in place of "?'s". Then I was able to find the mean of all non-NAs and replace the NAs with the mean by doing the following:
 
 # nonNAs = which(!is.na(mydata[,i]))
 # mydata[-nonNAs,i]=mean(mydata[nonNAs,i])
 
 # Where "i" is the column in question. We'll talk about other ways to handle NA's in the next lesson.
+cancer = read.csv('breast-cancer-wisconsin.data', header=FALSE, na.strings = "?")
+for (i in 1:length(cancer)) {
+    nonNAs = which(!is.na(cancer[,i]))
+    cancer[-nonNAs,i]=mean(cancer[nonNAs,i])
+}
+# Give names to data. The head() function lets you do python-style negative indexing, so the following grabs all but the last column name.
+names(cancer) = c(head(names(cancer), -1), 'class')
+
+# Remove the first column (ids)
+cancer[1] = NULL
+
+cCancer = ncol(cancer)
+benignIxs = which(cancer[,cCancer] == 2)
+cancer[,cCancer][ benignIxs ] = 'Benign'
+cancer[,cCancer][ -benignIxs ] = 'Malignant'
 
 # 7. To generate the density plots I used a kernel density function. It approximates a PDF in that the area under the curve sums to zero. The function (density) defaults to fitting 512 kernels (and it defaults to Gaussian) to the data. First I projected all the data onto LD1 and then found the density plot for everything. This was useful for getting the entire range of x values (both distributions must fit on the X axis so this will come in handy).
 
@@ -173,7 +188,26 @@ do.all.and.plot(data, data$class, 'Mice', nrow(data))
 # Note the $x and $y, also the xlim, and the type = "l" (that's a lower case L for line)
 
 # 9. Next, I used the "lines" command (instead of plot) to add the malignants to the plot. It has the same format (except you don't need the type).
+do.all.and.plot(cancer, cancer$class, 'Tumor', nrow(cancer)-10)
+
 
 # 10. Don't forget to include an answer to the question about which provides the best separation. Also don't forget to include the accuracy for each dataset. It may be difficult for the tumor data since they it isn't a scatter plot.
+# > source('~/My Dropbox/UM Grad School/2013 Spring/Pattern Rec 548/R workspace/P4 LDA/p4script.R')
+# [1] "iris"
+# [1] "Accuracy was 100%"
+# [1] "fruit"
+# [1] "Accuracy was 90%"
+# [1] "Mice"
+# [1] "Used all data to train, so accuracy is irrelevant."
+# [1] "Tumor"
+# [1] "Accuracy was 100%"
+# Warning messages:
+#     1: In dist(data) : NAs introduced by coercion
+# 2: In dist(data) : NAs introduced by coercion
+# 3: In lda.default(x, grouping, ...) : variables are collinear
+# 4: In dist(data) : NAs introduced by coercion
+# 5: In dist(data) : NAs introduced by coercion
 
 # 11. Finish-up the write-up with your opinion as to why the best separation is found in the plots you identified. Also include some speculation as to whether the mouse data LDA plot indicates there is hope for a classifier to be able to identify proximal vs. distal, even across different mice.
+
+
